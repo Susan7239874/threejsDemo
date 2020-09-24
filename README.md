@@ -81,6 +81,7 @@ lon lan的改动会影响视野上下左右移动，在touchmove 1的时候才�
 			}
 ```
 
+#其他文件  
 animatewx.html是百度地图的全景地图api做的一个，不需要怎么开发，仅仅替换经纬度、script ak=去官网可申请替换这个ak，这个文件已上线，可查看https://tvu.zykjedu.cn/mini/animatewx.html  
 mapsimple.html 是根据教程做个一个立方体不挺的旋转，没啥功能，仅供参考  
 map.html 是网上根据一个网友代码写的全景图切换，不同的是它是球形且只有一张图，cdn失效后换成我本地的js就不行了……，仅供参考  

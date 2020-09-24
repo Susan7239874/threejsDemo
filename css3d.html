@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>three.js css3d - panorama</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+
+				background-color: #000000;
+				margin: 0;
+				cursor: move;
+				overflow: hidden;
+			}
+
+			a {
+				color: #ffffff;
+			}
+
+			#info {
+				position: absolute;
+				width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				font-weight: bold;
+				text-align: center;
+				z-index: 1;
+			}
+			*{touch-action: none;}
+			.animateupdown{
+				top:10px;
+				animation: updown 2s ease 0.2s infinite;
+			}
+			.animateopacity{
+				opacity: 0.8;
+				animation: opacityyn 3s ease-in-out 0.2s infinite ;
+			}
+			@keyframes opacityyn {
+				0%{
+					opacity: 0.8;
+				}
+				50%{
+					opacity: 1;
+				}
+				100%{
+					opacity:0.8;
+				}
+			}
+			@keyframes updown{
+				0%{
+					top:10px;
+				}
+				50%{
+					top:0;
+				}
+				100%{
+					top:10px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<script src="threejs/build/three.js"></script>
+		<script src="threejs/renderers/CSS3DRenderer.js"></script>
+		<script src="threejs/controls/OrbitControls.js"></script>
+		<script src="threejs/libs/stats.min.js"></script>
+		<script src="threejs/libs/dat.gui.min.js"></script>
+		<script src="threejs/build/touch.min.js"></script>
+		<script type="text/javascript" src="https://cdn.bootcss.com/vConsole/3.3.0/vconsole.min.js"></script>
+		<script>
+			var vConsole=new VConsole();
+		</script>
+	<div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js css3d</a> - panorama demo. cubemap by <a href="http://www.humus.name/index.php?page=Textures" target="_blank" rel="noopener">Humus</a>.</div>
+
+		<script>
+
+			var camera, scene, renderer;
+			var geometry, material, mesh;
+			var target = new THREE.Vector3();//创建一个三维向量，数学角度，向量就是一个箭头
+			var lon = 90, lat = 0;
+			var phi = 0, theta = 0;
+            var sceneindex=0;//场景变化次数
+			var object;//箭头的一个对象
+			var touchX, touchY;
+			// 坐标系是右手坐标系，x向右，y轴向上，z轴向前
+			var sides = [//6个边的图片和位置和旋转角度，Math.PI = 3.14
+				{
+					url:['threejs/Bridge2/posz.jpg','threejs/Park2/posz.jpg','threejs/Park3Med/pz.jpg'],//正面
+					position: [ 0, 0,  512 ],
+					rotation: [ 0, Math.PI, 0 ]
+				},
+				{
+					url:['threejs/Bridge2/posx.jpg','threejs/Park2/posx.jpg','threejs/Park3Med/px.jpg'],//右侧
+					position: [ -512, 0, 0 ],
+					rotation: [ 0, Math.PI / 2, 0 ]
+				},
+
+				{
+					url:['threejs/Bridge2/negz.jpg','threejs/Park2/negz.jpg','threejs/Park3Med/nz.jpg'],//后面
+					position: [ 0, 0, -512 ],
+					rotation: [ 0, 0, 0 ]
+				},
+				{
+					url:['threejs/Bridge2/negx.jpg','threejs/Park2/negx.jpg','threejs/Park3Med/nx.jpg'],//左侧
+					position: [ 512, 0, 0 ],
+					rotation: [ 0, -Math.PI / 2, 0 ]
+				},
+				{
+					url:['threejs/Bridge2/posy.jpg','threejs/Park2/posy.jpg','threejs/Park3Med/py.jpg'],//天空
+					position: [ 0,  512, 0 ],
+					rotation: [ Math.PI / 2, 0, Math.PI ]
+				},
+				{
+					url: ['threejs/Bridge2/negy.jpg','threejs/Park2/negy.jpg','threejs/Park3Med/ny.jpg'],//脚底
+					position: [ 0, -512, 0 ],
+					rotation: [ - Math.PI / 2, 0, Math.PI ]
+				}
+			];
+
+			init();//初始化
+			animate();//循环渲染，跟随相机角度变化
+
+			function init() {
+
+				camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1,1000 );//创建场景
+
+				scene = new THREE.Scene();//创建场景
+				scene.autoUpdate=true;//自动更新场景的内容==>我自己加的，不然下面图片修改后场景不更新！
+
+				// camera.target = new THREE.Vector3( 0, 0, 100 );
+				// camera.position.set(0, 0, -10); //设置相机位置
+				// camera.lookAt(scene.position); //设置相机方向(指向的场景对象)
+
+				for ( var i = 0; i < sides.length; i ++ ) {
+					var side = sides[ i ];
+					var element = document.createElement( 'img' );//创建6个img图片
+					element.width = 1026; // 2 pixels extra to close the gap.
+					element.src = side.url[sceneindex];
+					element.setAttribute('id','map'+i);
+					element.setAttribute('class','map');
+					var object = new THREE.CSS3DObject( element );//Object3D创建3维对象实例
+					object.position.fromArray( side.position );//实例的位置和旋转角度进行设置
+					object.rotation.fromArray( side.rotation );
+					scene.add( object );//场景添加这个3维物体
+				}
+
+
+				goimginit();//箭头图片添加放置初始化
+
+				renderer = new THREE.CSS3DRenderer();//创建3d渲染器
+				 // renderer = new THREE.WebGLRenderer();
+				renderer.setSize( window.innerWidth, window.innerHeight );//设置3d渲染器的宽高
+
+				document.body.appendChild( renderer.domElement );//加入渲染器到页面
+				// //初始化时候：添加鼠标移动，开始结束，等等事件
+				document.addEventListener( 'mousedown', onDocumentMouseDown,  { passive: false } );
+				document.addEventListener( 'wheel', onDocumentMouseWheel, false );//监听鼠标滚动事件,缩放视野,只有它移动端不走
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false);
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+			function animate() {
+				requestAnimationFrame( animate );//是浏览器用于定时循环操作,将本方法循环
+				// lon +=  0.1;
+				lat = Math.max( - 85, Math.min( 85, lat ) );
+				phi = THREE.Math.degToRad( 90 - lat );
+				theta = THREE.Math.degToRad( lon );
+				target.x = Math.sin( phi ) * Math.cos( theta );
+				target.y = Math.cos( phi );
+				target.z = Math.sin( phi ) * Math.sin( theta );
+				// console.log(JSON.stringify(target));
+				camera.lookAt( target );
+				renderer.render( scene, camera );
+				goimgscaleall();
+			}
+			function goimginit(){
+				var atom = document.createElement( 'img' );
+				atom.src = 'threejs/Bridge2/goup.png';
+				atom.style.width=75+'px';
+				// atom.setAttribute('class','animateopacity');
+				atom.setAttribute('class','animateupdown');
+				atom.addEventListener('touchend',changeMap);//箭头图片点击事件,切换场景
+				object= new THREE.CSS3DObject( atom );
+				object.position.fromArray([0,0,470]);//实例的位置和旋转角度进行设置
+				object.rotation.fromArray([1,0,0]);
+				scene.add(object);
+			}
+            function changeMap() {
+				sceneindex=sceneindex+1;
+				for(var i=0;i<sides.length;i++){
+					let map=document.getElementById('map'+i);
+					map.src=sides[i].url[sceneindex];
+					camera.fov =75;
+					camera.updateProjectionMatrix();
+				}
+			}
+			function goimgscaleall(){
+				var FocalLength=camera.getEffectiveFOV();
+				FocalLength=(FocalLength)*(1/75);
+				FocalLength=FocalLength.toFixed(2);
+				FocalLength=FocalLength>0.1?FocalLength:0.1;
+				object.scale.fromArray([FocalLength,FocalLength,FocalLength]);
+			}
+			function onWindowResize() {//页面resize时触发，窗口大小调整了
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+			//用户交互插件 鼠标左键按住旋转，右键按住平移，滚轮缩放
+			var controls;
+			function initControls() {
+				controls = new THREE.OrbitControls(camera, renderer.domElement);
+				// 如果使用animate方法时，将此函数删除
+				//controls.addEventListener( 'change', render );
+				// 使动画循环使用时阻尼或自转 意思是否有惯性
+				controls.enableDamping = true;
+				//动态阻尼系数 就是鼠标拖拽旋转灵敏度
+				controls.dampingFactor =0.85;
+				//是否可以缩放
+				controls.enableZoom = true;
+				//是否自动旋转
+				controls.autoRotate = false;
+				//设置相机距离原点的最远距离
+				controls.minDistance = 20;
+				//设置相机距离原点的最远距离
+				controls.maxDistance =1000;
+				//是否开启右键拖拽
+				controls.enablePan = true;
+			}
+			//生成gui设置配置项
+			var gui;
+			function initGui() {
+				//声明一个保存需求修改的相关数据的对象
+				gui = {
+
+				};
+				var datGui = new dat.GUI();
+				//将设置属性添加到gui当中，gui.add(对象，属性，最小值，最大值）
+			}
+			//初始化性能插件
+			var stats;
+
+			function initStats() {
+				stats = new Stats();
+				document.body.appendChild(stats.dom);
+			}
+			function onDocumentMouseDown( event ) {//当按下鼠标按钮时运行脚本
+
+				event.preventDefault();
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+				var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+				lon -= movementX * 0.1;//当鼠标在横向移动时，经度跟着移动；
+				lat += movementY * 0.1;//鼠标纵向移动时，纬度进行变化
+
+			}
+
+			function onDocumentMouseUp( event ) {
+
+				document.removeEventListener( 'mousemove', onDocumentMouseMove );
+				document.removeEventListener( 'mouseup', onDocumentMouseUp );
+
+			}
+
+			function onDocumentMouseWheel( event ) {
+				var fov = camera.fov + event.deltaY * 0.05;
+
+				camera.fov = THREE.Math.clamp( fov, 10, 75 );
+
+				camera.updateProjectionMatrix();
+
+			}
+
+			var camerafov=75;
+			var num = 1;
+			var start;
+			var start0;
+			var now;
+			var time1;
+			var time2;
+			var scalestatus=false;
+			function onDocumentTouchStart( event ) {//移动端开始触碰
+				event.preventDefault();
+				switch (event.touches.length) {
+					case 1:
+						console.log('1个手指触碰');
+						var touch = event.touches[ 0 ];
+								touchX = touch.screenX;
+								touchY = touch.screenY;
+
+						start0=touch;
+						break;
+					case 2:// 第一个触摸点的坐标
+						console.log('2个手指触屏');
+						// console.log('onDocumentTouchStart 2个手指')
+						 start =event.touches;
+				}
+
+			}
+			function onDocumentTouchMove( event ) {//移动端移动
+				event.preventDefault();
+				switch (event.touches.length) {
+					case 1:
+						console.log('1个手指Move');
+						// console.log('onDocumentTouchMove 一个手指')
+						var touch = event.touches[ 0 ];
+							if(scalestatus){//刚刚缩放过
+								console.log('刚刚缩放过不滑动');
+								setTimeout(function(){
+									scalestatus=false;//延时一小会，因为它会滑动一段的
+								},50)
+								break;
+							}else{
+								console.log('正常滑动');
+								lon -= ( touch.screenX - touchX ) * 0.1;//当鼠标在横向移动时，经度跟着移动；
+								lat += ( touch.screenY - touchY ) * 0.1;//当鼠标在纵向向移动时，纬度跟着移动；
+								touchX = touch.screenX;
+								touchY = touch.screenY;
+								scalestatus=false;
+								break;
+							}
+					case 2:
+						console.log('2个手指缩放');
+						 now = event.touches;
+						if(getDistance(now[0], now[1]) < getDistance(start[0], start[1])) {//缩小
+							camerafov=camerafov+1;
+							if(camerafov>75){camerafov=75;}
+							camera.fov = camerafov;
+							camera.updateProjectionMatrix();
+
+						}else{
+							camerafov=camerafov-1;
+							if(camerafov<20)camerafov=20;
+							camera.fov = camerafov;
+							camera.updateProjectionMatrix();
+						}
+						scalestatus=true;
+			}
+
+			}
+			function getDistance(p1, p2) {
+				var x = p2.pageX - p1.pageX,
+						y = p2.pageY - p1.pageY;
+				return Math.sqrt((x * x) + (y * y));
+			}
+
+		</script>
+	</body>
+</html>

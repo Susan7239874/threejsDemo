@@ -2,6 +2,22 @@
 css3d.html 是真正的最后做出来的全景图切换demo，有场景切换，移动端能缩放场景，上下左右查看，还有箭头摆放上下的小动画  
 
 threejs文件夹下是css3d.html需要的素材和js文件  
+核心：
+```
+animate();
+function animate () {
+	requestAnimationFrame( animate );//渲染循环
+	
+	renderer.render( scene, camera );//renderer是渲染器，将场景、相机进行渲染，而场景中可以添加想要看到的东西！！！
+};
+function init(){
+camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1,1000 );//创建透视相机
+scene = new THREE.Scene();//创建场景
+renderer = new THREE.CSS3DRenderer();//创建3d渲染器
+renderer.setSize( window.innerWidth, window.innerHeight );//设置3d渲染器的宽高-渲染的场景宽高
+document.body.appendChild( renderer.domElement );//加入渲染器到页面------一定要添加到页面，否则无法显示
+}
+```
 这2句是启动实景图的关键：  
 ```
 	    init();//初始化
